@@ -18,11 +18,9 @@
       "username": "aiyoudiao",
       "title": "english",
       "category": "English",
-      "content_md": "<p>test. <img src=\"https://raw.githubusercontent.com/aiyoudiao/cruel-learning-together./main/assets/images/2026-03-15-khyqwdoyx7c.png\"></p>",
-      "tags": [
-        "english"
-      ],
-      "timestamp": "2026-03-15T20:29:32.064Z"
+      "content_md": "<p>学习 30 个单词<br><br><img src=\"https://raw.githubusercontent.com/aiyoudiao/cruel-learning-together./main/assets/images/2026-03-15-owbt21bhwcb.jpg\"></p>",
+      "tags": [],
+      "timestamp": "2026-03-15T20:39:17.620Z"
     }
   ],
   "users": {
@@ -36,5 +34,5 @@
       }
     }
   },
-  "generatedAt": "2026-03-15T20:29:39.850564"
+  "generatedAt": "2026-03-15T20:39:27.198478"
 }
