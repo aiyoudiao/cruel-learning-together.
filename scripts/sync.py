@@ -147,15 +147,8 @@ def generate_user_markdown(username, user_data):
             
         markdown += f"{entry['content_md']}\n\n"
         
-        for asset_url in entry['assets']:
-            if asset_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp')):
-                markdown += f"![Image]({asset_url})\n\n"
-            elif asset_url.endswith(('.mp4', '.webm', '.ogg')):
-                markdown += f"<video controls src=\"{asset_url}\" style=\"max-width: 100%;\"></video>\n\n"
-            elif asset_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                markdown += f"<audio controls src=\"{asset_url}\" style=\"width: 100%;\"></audio>\n\n"
-            else:
-                markdown += f"[Download File]({asset_url})\n\n"
+        # Removed the loop that appends assets at the end, 
+        # because the rich text editor already embeds them in content_md
         
         markdown += "---\n\n"
     
@@ -224,7 +217,12 @@ def update_readme(leaderboard, latest_checkins):
         for checkin in latest_checkins[:5]:
             latest_section += f"### {checkin['date']}\n\n"
             for user in checkin['users']:
-                content = user.get('content_md', user.get('content', ''))
+                raw_content = user.get('content_md', user.get('content', ''))
+                # Remove HTML tags for clean text in README
+                clean_content = re.sub(r'<[^>]+>', '', raw_content).strip()
+                # Truncate to 100 chars
+                display_content = clean_content[:100] + ('...' if len(clean_content) > 100 else '')
+                
                 cat = user.get('category', 'General')
                 title = user.get('title', '')
                 title_display = f"**{title}** - " if title else ""
@@ -237,7 +235,7 @@ def update_readme(leaderboard, latest_checkins):
                     except ValueError:
                         pass
                 
-                latest_section += f"- **{user['github']}** ({cat}){time_str}: {title_display}{content[:100]}...\n"
+                latest_section += f"- **{user['github']}** ({cat}){time_str}: {title_display}{display_content}\n"
             latest_section += "\n"
     else:
         latest_section += "No recent check-ins\n"

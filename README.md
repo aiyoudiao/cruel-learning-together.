@@ -1,14 +1,9 @@
-<p>test. <img src="https://raw.githubusercontent.com/aiyoudiao/cruel-learning-together./main/assets/images/2026-03-15-khyqwdoyx7c.png"></p>
-
 ## 🏆 残酷排行榜 (Leaderboard)
 
-| User | AI | Frontend | English | Math | Reading | Total |
-|---|---|---|---|---|---|---|
-| [aiyoudiao](users/aiyoudiao.md) | 0 | 0 | 1 | 0 | 0 | 1 |
+| User                         | AI | Frontend | English | Math | Reading | Total |
+| ---------------------------- | -- | -------- | ------- | ---- | ------- | ----- |
+| [aiyoudiao](users/aiyoudiao.md) | 0  | 0        | 1       | 0    | 0       | 1     |
 
 ## 📅 实时动态 (Latest Check-ins)
 
 ### 2026-03-15
-
-- **aiyoudiao** (English) `20:29`: **english** - <p>test. <img src="https://raw.githubusercontent.com/aiyoudiao/cruel-learning-together./main/assets/...
-

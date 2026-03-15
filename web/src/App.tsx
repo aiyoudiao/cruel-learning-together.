@@ -43,51 +43,58 @@ function App() {
 
   const { saveDraft, loadDraft, clearDraft } = useLocalDraft();
 
-  // Load draft on mount
+  // Load content when category or user changes
   useEffect(() => {
-    const draft = loadDraft();
-    if (draft) {
-      if (draft.title) setTitle(draft.title);
-      if (draft.category) setCategory(draft.category);
-      if (draft.tags) setTags(draft.tags.join(', '));
-      if (draft.content_md) setContent(draft.content_md);
-      if (draft.assets) setAssets(draft.assets);
+    // 1. Try to load local draft for this category
+    const localDraft = loadDraft(category);
+    if (localDraft) {
+      setTitle(localDraft.title);
+      setContent(localDraft.content_md);
+      setTags(localDraft.tags.join(', '));
+      setAssets(localDraft.assets);
       setDraftStatus('restored');
       setTimeout(() => setDraftStatus(''), 3000);
+      return;
     }
-  }, [loadDraft]);
 
-  // Auto-load today's checkin when category/user changes
-  useEffect(() => {
-    const loadTodayCheckin = async () => {
-      // Only if we have config and username
-      if (!token || !owner || !repo || !username || !navigator.onLine) return;
-      
-      // Check if content is empty (simple check)
-      const isContentEmpty = !content || content === '<p></p>' || content.trim() === '';
-      if (!isContentEmpty) return;
+    // 2. If no local draft, try to load from remote (today's checkin)
+    const loadRemote = async () => {
+      // If missing config, just clear inputs
+      if (!token || !owner || !repo || !username) {
+        setTitle('');
+        setContent('');
+        setTags('');
+        setAssets([]);
+        return;
+      }
+
+      if (!navigator.onLine) return;
 
       try {
         const api = new GitHubAPI({ owner, repo, token });
         const existing = await api.getUserCheckin(username, category);
         
         if (existing) {
-            if (existing.title) setTitle(existing.title);
-            if (existing.content_md) setContent(existing.content_md);
-            if (existing.tags) setTags(existing.tags.join(', '));
-            if (existing.assets) setAssets(existing.assets);
-            
+            setTitle(existing.title || '');
+            setContent(existing.content_md);
+            setTags(existing.tags.join(', '));
+            setAssets(existing.assets);
             setMessage(`已自动加载今日在【${CATEGORY_MAP[category] || category}】的打卡记录`);
             setTimeout(() => setMessage(''), 3000);
+        } else {
+            // No remote record either, clean slate
+            setTitle('');
+            setContent('');
+            setTags('');
+            setAssets([]);
         }
       } catch (e) {
-        console.debug("No existing checkin found or error loading", e);
+        console.debug("Failed to load remote checkin", e);
       }
     };
 
-    loadTodayCheckin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, username, owner, repo, token]); 
+    loadRemote();
+  }, [category, username, owner, repo, token, loadDraft]);
 
   // Auto-save draft
   useEffect(() => {
@@ -95,13 +102,11 @@ function App() {
       // Only save if there is some content
       if (title || content || tags) {
         setDraftStatus('saving');
-        const success = saveDraft({
+        const success = saveDraft(category, {
           title,
-          category,
           tags: tags.split(',').map(t => t.trim()).filter(t => t),
           content_md: content,
           assets,
-          timestamp: new Date().toISOString()
         });
         setDraftStatus(success ? 'saved' : 'unsaved');
       }
@@ -188,13 +193,13 @@ function App() {
       );
       
       setMessage('打卡成功！坚持就是胜利！');
-      // Clear form and draft
-      setTitle('');
-      setContent('');
-      setTags('');
-      setAssets([]);
-      clearDraft();
-      setDraftStatus('');
+      
+      // Do NOT clear form after submit, allowing user to continue editing.
+      // But we can clear the draft because the content is now safe in remote.
+      // If user refreshes, it will load from remote (which is same as current).
+      clearDraft(category);
+      setDraftStatus('saved');
+      
     } catch (error) {
       setMessage(`错误: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
@@ -302,8 +307,8 @@ function App() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => saveDraft({
-                    title, category, tags: tags.split(','), content_md: content, assets, timestamp: new Date().toISOString()
+                  onClick={() => saveDraft(category, {
+                    title, tags: tags.split(','), content_md: content, assets
                   }) && setDraftStatus('saved')}
                   className="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"
                 >

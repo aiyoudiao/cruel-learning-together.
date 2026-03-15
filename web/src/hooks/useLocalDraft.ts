@@ -2,23 +2,32 @@ import { useCallback } from 'react';
 
 export interface DraftData {
   title: string;
-  category: string;
   tags: string[];
   content_md: string;
   assets: string[];
   timestamp: string;
 }
 
-const DRAFT_KEY = 'study-checkin-draft';
+// Map category to draft data
+type DraftStorage = Record<string, DraftData>;
+
+const DRAFT_KEY = 'study-checkin-drafts-v2';
+const EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function useLocalDraft() {
-  const saveDraft = useCallback((data: DraftData) => {
+  
+  // Save draft for a specific category
+  const saveDraft = useCallback((category: string, data: Omit<DraftData, 'timestamp'>) => {
     try {
-      const draft = {
+      const storageStr = localStorage.getItem(DRAFT_KEY);
+      let storage: DraftStorage = storageStr ? JSON.parse(storageStr) : {};
+      
+      storage[category] = {
         ...data,
         timestamp: new Date().toISOString(),
       };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(storage));
       return true;
     } catch (error) {
       console.error('Failed to save draft:', error);
@@ -26,20 +35,46 @@ export function useLocalDraft() {
     }
   }, []);
 
-  const loadDraft = useCallback((): DraftData | null => {
+  // Load draft for a specific category
+  const loadDraft = useCallback((category: string): DraftData | null => {
     try {
-      const draftStr = localStorage.getItem(DRAFT_KEY);
-      if (!draftStr) return null;
-      return JSON.parse(draftStr) as DraftData;
+      const storageStr = localStorage.getItem(DRAFT_KEY);
+      if (!storageStr) return null;
+      
+      const storage: DraftStorage = JSON.parse(storageStr);
+      const draft = storage[category];
+      
+      if (!draft) return null;
+      
+      // Check expiration
+      const draftTime = new Date(draft.timestamp).getTime();
+      if (Date.now() - draftTime > EXPIRATION_MS) {
+        // Expired, remove it
+        delete storage[category];
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(storage));
+        return null;
+      }
+      
+      return draft;
     } catch (error) {
       console.error('Failed to load draft:', error);
       return null;
     }
   }, []);
 
-  const clearDraft = useCallback(() => {
+  // Clear specific category draft or all
+  const clearDraft = useCallback((category?: string) => {
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      if (category) {
+        const storageStr = localStorage.getItem(DRAFT_KEY);
+        if (storageStr) {
+            const storage: DraftStorage = JSON.parse(storageStr);
+            delete storage[category];
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(storage));
+        }
+      } else {
+        localStorage.removeItem(DRAFT_KEY);
+      }
     } catch (error) {
       console.error('Failed to clear draft:', error);
     }
