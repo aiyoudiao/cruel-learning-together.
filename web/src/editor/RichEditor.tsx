@@ -62,7 +62,7 @@ export function RichEditor({
       StarterKit,
       Image.configure({
         inline: true,
-        allowBase64: true,
+        allowBase64: false, // Disable default Base64 behavior where possible
       }),
       Link.configure({
         openOnClick: false,
@@ -85,6 +85,63 @@ export function RichEditor({
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px] text-gray-300',
       },
+      handlePaste: (view, event) => {
+        const items = Array.from(event.clipboardData?.files || []);
+        const images = items.filter(item => item.type.startsWith('image/'));
+        
+        if (images.length > 0 && onImageUpload) {
+          event.preventDefault(); // Prevent default base64 insertion
+          
+          images.forEach(async (image) => {
+            try {
+              // Optionally insert a loading placeholder here
+              const url = await onImageUpload(image);
+              if (url) {
+                const { schema } = view.state;
+                const node = schema.nodes.image.create({ src: url });
+                const transaction = view.state.tr.replaceSelectionWith(node);
+                view.dispatch(transaction);
+              }
+            } catch (error) {
+              console.error('Failed to upload pasted image', error);
+            }
+          });
+          return true;
+        }
+        return false;
+      },
+      handleDrop: (view, event) => {
+        const items = Array.from(event.dataTransfer?.files || []);
+        const images = items.filter(item => item.type.startsWith('image/'));
+        
+        if (images.length > 0 && onImageUpload) {
+          event.preventDefault();
+          
+          const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          
+          images.forEach(async (image) => {
+            try {
+              const url = await onImageUpload(image);
+              if (url) {
+                const { schema } = view.state;
+                const node = schema.nodes.image.create({ src: url });
+                
+                let transaction;
+                if (coordinates) {
+                  transaction = view.state.tr.insert(coordinates.pos, node);
+                } else {
+                  transaction = view.state.tr.replaceSelectionWith(node);
+                }
+                view.dispatch(transaction);
+              }
+            } catch (error) {
+              console.error('Failed to upload dropped image', error);
+            }
+          });
+          return true;
+        }
+        return false;
+      }
     },
   });
 
