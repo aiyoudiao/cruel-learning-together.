@@ -14,7 +14,7 @@ export function UIButton({
   className = '',
   ...props 
 }: UIButtonProps) {
-  const baseStyles = 'rounded-xl font-bold transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden';
+  const baseStyles = 'rounded-xl font-bold transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 relative overflow-hidden';
   
   // Use theme variables for gradients
   const variants = {

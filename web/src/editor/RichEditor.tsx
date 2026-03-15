@@ -5,7 +5,7 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import './RichEditor.css';
 
 const lowlight = createLowlight(common);
@@ -42,7 +42,7 @@ const MenuButton = ({
       ${active 
         ? 'bg-solana-primary text-white shadow-neon-purple' 
         : 'text-gray-400 hover:text-white hover:bg-white/10'}
-      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
     `}
   >
     {children}
@@ -57,6 +57,8 @@ export function RichEditor({
   onAudioUpload,
   placeholder = 'Start typing...'
 }: RichEditorProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -186,14 +188,33 @@ export function RichEditor({
     }
   }, [content, editor]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullscreen]);
+
+  const clearContent = () => {
+    if (window.confirm('确定要清空编辑器内容吗？')) {
+      editor?.commands.clearContent();
+      editor?.commands.focus();
+    }
+  };
+
   if (!editor) {
     return <div className="p-8 text-center text-gray-500 animate-pulse">Initializing Neural Interface...</div>;
   }
 
   return (
-    <div className="flex flex-col bg-black/30 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm">
+    <div className={`flex flex-col bg-black/30 border border-white/10 rounded-xl overflow-hidden backdrop-blur-sm transition-all duration-300 ${
+      isFullscreen ? 'fixed inset-0 z-50 bg-gray-900/95 m-0 rounded-none' : ''
+    }`}>
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-2 bg-white/5 border-b border-white/5">
+      <div className="flex flex-wrap gap-1 p-2 bg-white/5 border-b border-white/5 items-center">
         <MenuButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive('bold')}
@@ -259,22 +280,39 @@ export function RichEditor({
 
         <div className="w-px h-6 bg-white/10 mx-1 self-center" />
 
-        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all" title="Upload Image">
           📷
           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
         </label>
-        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all" title="Upload Video">
           🎬
           <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
         </label>
-        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+        <label className="cursor-pointer p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all" title="Upload Audio">
           🎵
           <input type="file" accept="audio/*" onChange={handleAudioUpload} className="hidden" />
         </label>
+
+        <div className="flex-1" /> {/* Spacer */}
+
+        <MenuButton
+          onClick={clearContent}
+          title="Clear Content"
+        >
+          🗑️
+        </MenuButton>
+        
+        <MenuButton
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          active={isFullscreen}
+          title={isFullscreen ? "Exit Fullscreen (Esc)" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? '↙️' : '↗️'}
+        </MenuButton>
       </div>
 
       {/* Editor Content */}
-      <div className="p-4 min-h-[300px]">
+      <div className={`p-4 ${isFullscreen ? 'flex-1 overflow-auto max-w-4xl mx-auto w-full' : 'min-h-[300px]'}`}>
         <EditorContent editor={editor} />
       </div>
     </div>

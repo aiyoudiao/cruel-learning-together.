@@ -398,10 +398,10 @@ function App() {
                   <UIButton 
                     type="submit" 
                     className="w-full py-4 text-lg" 
-                    disabled={loading}
-                    glow
+                    disabled={loading || (!content || (content.replace(/<[^>]+>/g, '').trim().length === 0 && !content.includes('<img') && !content.includes('<video') && !content.includes('<audio')))}
+                    glow={!(!content || (content.replace(/<[^>]+>/g, '').trim().length === 0 && !content.includes('<img') && !content.includes('<video') && !content.includes('<audio')))}
                   >
-                    {loading ? '正在提交...' : '提交打卡'}
+                    {loading ? '正在提交...' : ((!content || (content.replace(/<[^>]+>/g, '').trim().length === 0 && !content.includes('<img') && !content.includes('<video') && !content.includes('<audio'))) ? '内容为空，无法提交' : '提交打卡')}
                   </UIButton>
                 </div>
 
