@@ -43,8 +43,8 @@ def calculate_user_stats(checkins):
             user_data[username]['checkin_dates'].append(date)
             user_data[username]['history'].append({
                 'date': date,
-                'content': user['content'],
-                'images': user['images'],
+                'content_md': user.get('content_md', user.get('content', '')),
+                'assets': user.get('assets', []),
                 'timestamp': user['timestamp']
             })
     
@@ -104,10 +104,17 @@ def generate_user_markdown(username, user_data):
     
     for entry in sorted_history:
         markdown += f"### {entry['date']}\n\n"
-        markdown += f"{entry['content']}\n\n"
+        markdown += f"{entry['content_md']}\n\n"
         
-        for image_url in entry['images']:
-            markdown += f"![学习截图]({image_url})\n\n"
+        for asset_url in entry['assets']:
+            if asset_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp')):
+                markdown += f"![学习截图]({asset_url})\n\n"
+            elif asset_url.endswith(('.mp4', '.webm', '.ogg')):
+                markdown += f"<video controls src=\"{asset_url}\" style=\"max-width: 100%;\"></video>\n\n"
+            elif asset_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+                markdown += f"<audio controls src=\"{asset_url}\" style=\"width: 100%;\"></audio>\n\n"
+            else:
+                markdown += f"[下载文件]({asset_url})\n\n"
     
     return markdown
 
@@ -161,7 +168,8 @@ def update_readme(leaderboard, latest_checkins):
         for checkin in latest_checkins[:5]:
             latest_section += f"### {checkin['date']}\n\n"
             for user in checkin['users']:
-                latest_section += f"- **{user['github']}**: {user['content'][:100]}...\n"
+                content = user.get('content_md', user.get('content', ''))
+                latest_section += f"- **{user['github']}**: {content[:100]}...\n"
             latest_section += "\n"
     else:
         latest_section += "暂无打卡记录\n"

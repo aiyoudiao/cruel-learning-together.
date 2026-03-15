@@ -14,16 +14,17 @@
 ### 安全使用原则
 
 1. **不要在代码中硬编码 token**
+
    - ❌ 错误：`const token = 'ghp_xxxxxxxxxxxx'`
    - ✅ 正确：通过环境变量或用户输入获取
-
 2. **使用环境变量（推荐）**
+
    ```bash
    # 在 .env 文件中（不要提交到 Git）
    VITE_GITHUB_TOKEN=ghp_xxxxxxxxxxxx
    ```
-
 3. **限制 token 杈权限**
+
    - 只授予必要的权限
    - 定期轮换 token
    - 为不同用途创建不同的 token
@@ -35,6 +36,7 @@
 当前实现中，token 通过用户输入获取，存在以下风险：
 
 **风险**：
+
 - Token 可能被存储在浏览器历史记录中
 - Token 可能被浏览器扩展获取
 - Token 在网络传输中可能被拦截
@@ -42,23 +44,24 @@
 **改进方案**：
 
 1. **使用后端代理（推荐）**
+
    ```typescript
    // 前端只发送到后端
    const response = await fetch('/api/checkin', {
      method: 'POST',
      body: JSON.stringify({ username, content, images })
    });
-   
+
    // 后端处理 GitHub API 调用
    // token 存储在服务器环境变量中
    ```
-
 2. **使用 GitHub OAuth**
+
    - 用户通过 OAuth 授权
    - 获取短期访问令牌
    - 令牌自动过期
-
 3. **使用 GitHub App**
+
    - 创建 GitHub App
    - 使用 JWT 进行认证
    - 更细粒度的权限控制
@@ -107,13 +110,13 @@ class RateLimiter {
   async checkLimit(): Promise<boolean> {
     const now = Date.now();
     this.requests = this.requests.filter(time => now - time < this.windowMs);
-    
+  
     if (this.requests.length >= this.maxRequests) {
       const waitTime = this.windowMs - (now - this.requests[0]);
       await new Promise(resolve => setTimeout(resolve, waitTime));
       return this.checkLimit();
     }
-    
+  
     this.requests.push(now);
     return true;
   }
@@ -140,24 +143,24 @@ class RateLimiter:
         self.max_requests = max_requests
         self.window = window
         self.requests = defaultdict(list)
-    
+  
     def is_allowed(self, identifier):
         now = time()
         requests = self.requests[identifier]
-        
+      
         # 清理过期请求
         requests[:] = [r for r in requests if now - r < self.window]
-        
+      
         if len(requests) >= self.max_requests:
             return False
-        
+      
         requests.append(now)
         return True
 
 # 使用装饰器
 def rate_limit(max_requests=10, window=60):
     limiter = RateLimiter(max_requests, window)
-    
+  
     def decorator(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
@@ -204,10 +207,10 @@ async function handleSubmit() {
 def has_checked_in_today(username: str) -> bool:
     today = datetime.now().strftime('%Y-%m-%d')
     checkin_file = CHECKINS_DIR / f"{today}.json"
-    
+  
     if not checkin_file.exists():
         return False
-    
+  
     with open(checkin_file, 'r') as f:
         data = json.load(f)
         return any(user['github'] == username for user in data['users'])
@@ -246,8 +249,8 @@ function validateInput(username: string, content: string): boolean {
   
   // 防止 XSS
   const sanitizedContent = content
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/</g, '<')
+    .replace(/>/g, '>');
   
   return true;
 }
@@ -296,6 +299,7 @@ if (window.location.protocol !== 'https:' && window.location.hostname !== 'local
 ```
 
 **优势**：
+
 - Token 存储在服务器端
 - 可以实现更复杂的速率限制
 - 可以添加用户认证
@@ -315,7 +319,7 @@ class Logger {
       details,
       ip: 'xxx.xxx.xxx.xxx' // 从服务器获取
     };
-    
+  
     // 发送到日志服务
     console.log(JSON.stringify(logEntry));
   }

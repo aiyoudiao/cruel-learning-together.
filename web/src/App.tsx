@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { GitHubAPI, type GitHubConfig } from './githubApi';
 import { Dashboard } from './Dashboard';
+import { RichEditor } from './editor/RichEditor';
+import { createAssetUploader, type AssetUploader } from './github/uploadAsset';
 import './App.css';
 
 function App() {
@@ -13,10 +15,42 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [view, setView] = useState<'checkin' | 'dashboard'>('checkin');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewMode, setPreviewMode] = useState(false);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImages(Array.from(e.target.files));
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const config: GitHubConfig = { owner, repo, token };
+    const uploader = createAssetUploader(config);
+    
+    try {
+      const result = await uploader.uploadImage(file, new Date().toISOString().split('T')[0]);
+      return result.url;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleVideoUpload = async (file: File): Promise<string> => {
+    const config: GitHubConfig = { owner, repo, token };
+    const uploader = createAssetUploader(config);
+    
+    try {
+      const result = await uploader.uploadVideo(file, new Date().toISOString().split('T')[0]);
+      return result.url;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleAudioUpload = async (file: File): Promise<string> => {
+    const config: GitHubConfig = { owner, repo, token };
+    const uploader = createAssetUploader(config);
+    
+    try {
+      const result = await uploader.uploadAudio(file, new Date().toISOString().split('T')[0]);
+      return result.url;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -30,16 +64,22 @@ function App() {
 
     setLoading(true);
     setMessage('');
+    setUploadProgress(0);
 
     try {
       const config: GitHubConfig = { owner, repo, token };
       const api = new GitHubAPI(config);
       
-      await api.submitCheckin(username, content, images, '');
+      const totalFiles = images.length;
+      for (let i = 0; i < totalFiles; i++) {
+        setUploadProgress(Math.round(((i + 1) / totalFiles) * 100));
+        await api.submitCheckin(username, content, [images[i]], '');
+      }
       
       setMessage('打卡成功！');
       setContent('');
       setImages([]);
+      setUploadProgress(0);
     } catch (error) {
       setMessage(`错误: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
@@ -98,61 +138,100 @@ function App() {
         </div>
 
         {view === 'checkin' && (
-          <form onSubmit={handleSubmit} className="checkin-form">
-            <div className="form-group">
-              <label>GitHub 用户名 *</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="input"
-                placeholder="输入你的 GitHub 用户名"
-                required
+          <div className="checkin-section">
+            <div className="editor-section">
+              <RichEditor
+                content={content}
+                onChange={setContent}
+                onImageUpload={handleImageUpload}
+                onVideoUpload={handleVideoUpload}
+                onAudioUpload={handleAudioUpload}
+                placeholder="开始输入你的学习内容..."
               />
             </div>
 
-            <div className="form-group">
-              <label>学习内容 *</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="textarea"
-                placeholder="今天学习了什么？"
-                rows={6}
-                required
-              />
+            <div className="preview-toggle">
+              <button 
+                className={`preview-btn ${previewMode ? 'active' : ''}`}
+                onClick={() => setPreviewMode(!previewMode)}
+              >
+                {previewMode ? '编辑模式' : '预览模式'}
+              </button>
             </div>
 
-            <div className="form-group">
-              <label>上传图片</label>
-              <input
-                type="file"
-                onChange={handleImageChange}
-                className="input"
-                accept="image/*"
-                multiple
-              />
-              {images.length > 0 && (
-                <div className="image-preview">
-                  {images.map((img, index) => (
-                    <div key={index} className="image-item">
-                      {img.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? '提交中...' : '提交打卡'}
-            </button>
-
-            {message && (
-              <div className={`message ${message.includes('错误') ? 'error' : 'success'}`}>
-                {message}
+            {previewMode && (
+              <div className="preview-content">
+                <div dangerouslySetInnerHTML={{ __html: content }} />
               </div>
             )}
-          </form>
+
+            <form onSubmit={handleSubmit} className="checkin-form">
+              <div className="form-group">
+                <label>GitHub 用户名 *</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="input"
+                  placeholder="输入你的 GitHub 用户名"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>上传图片</label>
+                <input
+                  type="file"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      setImages(Array.from(e.target.files));
+                    }
+                  }}
+                  className="input"
+                  accept="image/*"
+                  multiple
+                />
+                {images.length > 0 && (
+                  <div className="image-preview">
+                    {images.map((img, index) => (
+                      <div key={index} className="image-item">
+                        {img.name}
+                      <button 
+                        type="button"
+                        onClick={() => setImages(images.filter((_, i) => i !== index))}
+                        className="remove-btn"
+                      >
+                        ×
+                      </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="submit-btn" disabled={loading}>
+                {loading ? '提交中...' : '提交打卡'}
+              </button>
+
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="upload-progress">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <div className="progress-text">{uploadProgress}%</div>
+                </div>
+              )}
+
+              {message && (
+                <div className={`message ${message.includes('错误') ? 'error' : 'success'}`}>
+                  {message}
+                </div>
+              )}
+            </form>
+          </div>
         )}
 
         {view === 'dashboard' && config && username && (
