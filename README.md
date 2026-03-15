@@ -1,28 +1,56 @@
-# GitHub Study Tracker V3 - Web3 Edition
+# GitHub Study OS V4 - Persistence Edition
 
-A Cyberpunk/Solana-inspired study tracker built with React, Vite, TailwindCSS, and GitHub as a backend.
+An advanced learning tracking platform built entirely on top of GitHub, featuring draft persistence and offline resilience.
 
-## 🌟 Version 3 Features
+## 🌟 Version 4 Features
 
-- **Web3 Cyberpunk UI**: Minimalist, neon-glowing design inspired by Solana.
-- **Theme System**: Toggle between Solana, Cyberpunk, Dark, and Light themes.
-- **Multi-Category**: Track learning in AI, Frontend, English, Math, and Reading.
-- **Rich Text Editor**: TipTap integration with Markdown support and media uploads.
-- **AI-Ready Architecture**: Structured for future AI-generated reports.
+- **Draft Persistence**: Never lose your work. Drafts are automatically saved to local storage.
+- **Auto-Save**: Changes are saved every second (debounced).
+- **Offline Mode**: Continue writing drafts and attaching assets even when offline.
+- **Resilient Editing**: Session recovery ensures you pick up exactly where you left off.
+- **Draft Indicators**: Visual feedback for save status.
 
 ## 🏗 System Architecture
 
 ```mermaid
 graph TD
-    User[User] -->|Check-in| App[Web App (React/Vite)]
+    User[User] -->|Type| App[Web App]
+    App -->|Auto Save| LocalStorage[Local Draft]
     App -->|Upload Assets| GitHubAssets[GitHub Assets]
-    App -->|Save Data| GitHubJSON[GitHub JSON Store]
+    App -->|Submit| GitHubJSON[GitHub JSON Store]
+    LocalStorage -->|Restore| App
     GitHubJSON -->|Trigger| Action[GitHub Action]
-    Action -->|Run| SyncScript[Python Sync Script]
-    SyncScript -->|Update| README[Leaderboard]
-    SyncScript -->|Update| UserLogs[User Markdown Logs]
-    SyncScript -->|Generate| Reports[Future AI Reports]
+    Action -->|Sync| Stats[Leaderboard & Reports]
 ```
+
+## 💾 Draft System
+
+The draft system uses a custom React hook `useLocalDraft` to manage state synchronization with `localStorage`.
+
+### Key: `study-checkin-draft`
+
+Structure:
+```json
+{
+  "title": "Learning Rust",
+  "category": "Backend",
+  "tags": ["rust", "memory-safety"],
+  "content_md": "...",
+  "assets": ["..."],
+  "timestamp": "2024-03-16T10:00:00Z"
+}
+```
+
+### Behavior
+1.  **Auto Save**: Triggers 1s after last keystroke.
+2.  **Recovery**: On page load, checks for existing draft and restores UI.
+3.  **Reset**: Clears draft only after successful GitHub submission.
+
+## 🔌 Offline Capability
+
+- **Writing**: Full rich text editing works offline.
+- **Assets**: Images attached while offline are stored as Base64 data URIs in the draft content, allowing immediate preview.
+- **Submission**: Requires online connection.
 
 ## 🎨 Theme System
 
@@ -31,25 +59,6 @@ Themes are defined in `src/context/ThemeContext.tsx` and applied via `data-theme
 
 - **Solana**: `#9945FF` (Purple) & `#14F195` (Green)
 - **Cyberpunk**: `#00F0FF` (Cyan) & `#FF003C` (Pink) & `#FTEE0E` (Yellow)
-
-## 📚 Category System
-
-Data is stored hierarchically:
-`checkins/{category}/{date}.json`
-
-Supported categories:
-- AI
-- Frontend
-- English
-- Math
-- Reading
-
-## 🤖 Future AI Features
-
-The `reports/` directory is prepared for:
-- **Weekly Summaries**: AI analysis of weekly progress.
-- **Knowledge Graphs**: Connecting concepts learned across categories.
-- **Streak Predictions**: AI-driven motivation.
 
 ## 🚀 Getting Started
 
@@ -62,4 +71,4 @@ The `reports/` directory is prepared for:
 
 - **Frontend**: React, Vite, TailwindCSS, TipTap
 - **Backend**: GitHub API, GitHub Actions
-- **Scripting**: Python
+- **Persistence**: LocalStorage, GitHub Repo

@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'checkins/**'
-      - 'assets/images/**'
+      - 'assets/**'
   workflow_dispatch:
 
 permissions:
@@ -26,15 +26,16 @@ jobs:
           python-version: '3.11'
       
       - name: Run sync script
+        # Fix: Run from root directory so paths work correctly
         run: |
-          cd scripts
-          python sync.py
+          python scripts/sync.py
       
       - name: Commit changes
+        # Fix: Add dashboard.json to commit
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add README.md users/
+          git add README.md users/ dashboard.json
           git diff --staged --quiet || git commit -m "Auto-update statistics and user files"
       
       - name: Push changes

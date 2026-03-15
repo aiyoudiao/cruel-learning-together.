@@ -7,6 +7,7 @@ from collections import defaultdict
 CHECKINS_DIR = Path("checkins")
 USERS_DIR = Path("users")
 README_PATH = Path("README.md")
+DASHBOARD_JSON_PATH = Path("dashboard.json")
 
 CATEGORIES = ['AI', 'Frontend', 'English', 'Math', 'Reading']
 
@@ -22,16 +23,6 @@ def load_checkins():
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                # Ensure data has category info if missing (backward compatibility)
-                # Actually, the file path might give a hint, or the content inside
-                # New format has 'users' list with 'category' field, or 'category' at root?
-                # The prompt said: checkins/{category}/YYYY-MM-DD.json
-                # And data model: { "category": "AI", ... } inside the user object or root?
-                # Step 6 says: { "github": "username", "category": "AI", ... }
-                # But Step 3 says storage is checkins/{category}/YYYY-MM-DD.json
-                # So the file structure implies category.
-                
-                # Let's assume standard structure.
                 checkins.append(data)
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
@@ -52,8 +43,6 @@ def calculate_user_stats(checkins):
         date = checkin['date']
         for user in checkin['users']:
             username = user['github']
-            # Category might be in user object or inferred from path (but here we only have content)
-            # In Step 6, "category" is part of the check-in object.
             category = user.get('category', 'Uncategorized')
             
             user_data[username]['total_checkins'] += 1
@@ -173,9 +162,12 @@ def generate_leaderboard(user_data):
     leaderboard = []
     
     for username, data in user_data.items():
+        current_streak, longest_streak = calculate_streak(data['checkin_dates'])
         row = {
             'username': username,
             'total': data['total_checkins'],
+            'currentStreak': current_streak,
+            'longestStreak': longest_streak
         }
         # Add stats for each known category
         for cat in CATEGORIES:
@@ -196,8 +188,6 @@ def update_readme(leaderboard, latest_checkins):
     with open(README_PATH, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    # Generate new table header
-    # | User | AI | Frontend | English | Math | Reading | Total |
     header = "| User | " + " | ".join(CATEGORIES) + " | Total |\n"
     separator = "|---" * (len(CATEGORIES) + 2) + "|\n"
     
@@ -222,8 +212,6 @@ def update_readme(leaderboard, latest_checkins):
     else:
         latest_section += "No recent check-ins\n"
     
-    # Replace old sections
-    # We assume "## Leaderboard" is the anchor
     if "## Leaderboard" in content:
         pre_content = content.split("## Leaderboard")[0]
         new_content = pre_content + "## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
@@ -231,13 +219,50 @@ def update_readme(leaderboard, latest_checkins):
         pre_content = content.split("## 排行榜")[0]
         new_content = pre_content + "## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
     else:
-        # Fallback if neither exists
         new_content = content + "\n\n## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
 
     with open(README_PATH, 'w', encoding='utf-8') as f:
         f.write(new_content)
     
     print("Updated README.md")
+
+
+def generate_dashboard_json(user_data, leaderboard, latest_checkins):
+    """生成 Dashboard JSON 数据"""
+    dashboard_data = {
+        "leaderboard": leaderboard,
+        "latestCheckins": [],
+        "users": {},
+        "generatedAt": datetime.now().isoformat()
+    }
+    
+    # Process latest checkins
+    for checkin in latest_checkins[:20]:
+        for user in checkin['users']:
+            dashboard_data["latestCheckins"].append({
+                "date": checkin['date'],
+                "username": user['github'],
+                "category": user.get('category', 'General'),
+                "content_md": user.get('content_md', user.get('content', '')),
+                "tags": user.get('tags', []),
+                "timestamp": user.get('timestamp', '')
+            })
+            
+    # Process user stats
+    for username, data in user_data.items():
+        current_streak, longest_streak = calculate_streak(data['checkin_dates'])
+        dashboard_data["users"][username] = {
+            "username": username,
+            "totalCheckins": data['total_checkins'],
+            "currentStreak": current_streak,
+            "longestStreak": longest_streak,
+            "categories": data['categories']
+        }
+        
+    with open(DASHBOARD_JSON_PATH, 'w', encoding='utf-8') as f:
+        json.dump(dashboard_data, f, ensure_ascii=False, indent=2)
+        
+    print(f"Generated {DASHBOARD_JSON_PATH}")
 
 
 def main():
@@ -248,6 +273,9 @@ def main():
     
     if not checkins:
         print("No check-ins found")
+        # Still generate empty dashboard if needed, or just return
+        # But better to generate empty json so frontend doesn't 404
+        generate_dashboard_json({}, [], [])
         return
     
     user_data = calculate_user_stats(checkins)
@@ -260,6 +288,7 @@ def main():
     
     latest_checkins = sorted(checkins, key=lambda x: x['date'], reverse=True)
     update_readme(leaderboard, latest_checkins)
+    generate_dashboard_json(user_data, leaderboard, latest_checkins)
     
     print("Sync complete!")
 

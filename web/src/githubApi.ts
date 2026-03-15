@@ -10,6 +10,7 @@ export interface CheckinData {
   date: string;
   users: Array<{
     github: string;
+    title?: string;
     category: string;
     content_md: string;
     assets: string[];
@@ -84,6 +85,7 @@ export class GitHubAPI {
 
   async submitCheckin(
     username: string,
+    title: string,
     category: string,
     content: string,
     assets: string[],
@@ -91,7 +93,6 @@ export class GitHubAPI {
     date: string
   ): Promise<void> {
     const today = date || new Date().toISOString().split('T')[0];
-    // New path structure: checkins/{category}/YYYY-MM-DD.json
     const checkinPath = `checkins/${category}/${today}.json`;
 
     const existingData = await this.getFile(checkinPath);
@@ -108,6 +109,7 @@ export class GitHubAPI {
 
     const userCheckin = {
       github: username,
+      title: title,
       category: category,
       content_md: content,
       assets: assets,
@@ -115,13 +117,6 @@ export class GitHubAPI {
       timestamp: new Date().toISOString(),
     };
 
-    // Append or replace user's checkin for this category and date?
-    // Usually we allow multiple checkins or one per day. 
-    // The previous logic replaced the user's entry. 
-    // Let's stick to replacing for now, or appending if we want multiple checkins per day.
-    // Given the structure, `users` array implies multiple users checking in on the same day/category.
-    // So we should find if THIS user has already checked in.
-    
     const existingUserIndex = checkinData.users.findIndex(u => u.github === username);
 
     if (existingUserIndex >= 0) {
