@@ -8,18 +8,30 @@ CHECKINS_DIR = Path("checkins")
 USERS_DIR = Path("users")
 README_PATH = Path("README.md")
 
+CATEGORIES = ['AI', 'Frontend', 'English', 'Math', 'Reading']
 
 def load_checkins():
-    """加载所有打卡记录"""
+    """加载所有打卡记录 (递归查找)"""
     checkins = []
     
     if not CHECKINS_DIR.exists():
         return checkins
     
-    for file_path in sorted(CHECKINS_DIR.glob("*.json")):
+    # Recursively find all json files
+    for file_path in CHECKINS_DIR.rglob("*.json"):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                # Ensure data has category info if missing (backward compatibility)
+                # Actually, the file path might give a hint, or the content inside
+                # New format has 'users' list with 'category' field, or 'category' at root?
+                # The prompt said: checkins/{category}/YYYY-MM-DD.json
+                # And data model: { "category": "AI", ... } inside the user object or root?
+                # Step 6 says: { "github": "username", "category": "AI", ... }
+                # But Step 3 says storage is checkins/{category}/YYYY-MM-DD.json
+                # So the file structure implies category.
+                
+                # Let's assume standard structure.
                 checkins.append(data)
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
@@ -32,20 +44,28 @@ def calculate_user_stats(checkins):
     user_data = defaultdict(lambda: {
         'total_checkins': 0,
         'checkin_dates': [],
-        'history': []
+        'history': [],
+        'categories': defaultdict(int)
     })
     
     for checkin in checkins:
         date = checkin['date']
         for user in checkin['users']:
             username = user['github']
+            # Category might be in user object or inferred from path (but here we only have content)
+            # In Step 6, "category" is part of the check-in object.
+            category = user.get('category', 'Uncategorized')
+            
             user_data[username]['total_checkins'] += 1
+            user_data[username]['categories'][category] += 1
             user_data[username]['checkin_dates'].append(date)
             user_data[username]['history'].append({
                 'date': date,
+                'category': category,
                 'content_md': user.get('content_md', user.get('content', '')),
                 'assets': user.get('assets', []),
-                'timestamp': user['timestamp']
+                'tags': user.get('tags', []),
+                'timestamp': user.get('timestamp', '')
             })
     
     return user_data
@@ -65,8 +85,11 @@ def calculate_streak(dates):
     
     prev_date = None
     for date_str in sorted_dates:
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            continue
+            
         if prev_date is None:
             temp_streak = 1
             if date == today or date == today - timedelta(days=1):
@@ -95,26 +118,38 @@ def generate_user_markdown(username, user_data):
     
     markdown = f"# {username}\n\n"
     markdown += "## Stats\n\n"
-    markdown += f"Total Check-ins: {total}\n"
-    markdown += f"Current Streak: {current_streak} days\n"
-    markdown += f"Longest Streak: {longest_streak} days\n\n"
+    markdown += f"- **Total Check-ins**: {total}\n"
+    markdown += f"- **Current Streak**: {current_streak} days\n"
+    markdown += f"- **Longest Streak**: {longest_streak} days\n\n"
+    
+    markdown += "### Category Breakdown\n\n"
+    for cat, count in user_data['categories'].items():
+        markdown += f"- **{cat}**: {count}\n"
+    markdown += "\n"
+
     markdown += "## History\n\n"
     
     sorted_history = sorted(user_data['history'], key=lambda x: x['date'], reverse=True)
     
     for entry in sorted_history:
-        markdown += f"### {entry['date']}\n\n"
+        markdown += f"### {entry['date']} ({entry['category']})\n\n"
+        if entry.get('tags'):
+            tags_str = ", ".join([f"`{t}`" for t in entry['tags']])
+            markdown += f"Tags: {tags_str}\n\n"
+            
         markdown += f"{entry['content_md']}\n\n"
         
         for asset_url in entry['assets']:
             if asset_url.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp')):
-                markdown += f"![学习截图]({asset_url})\n\n"
+                markdown += f"![Image]({asset_url})\n\n"
             elif asset_url.endswith(('.mp4', '.webm', '.ogg')):
                 markdown += f"<video controls src=\"{asset_url}\" style=\"max-width: 100%;\"></video>\n\n"
             elif asset_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
                 markdown += f"<audio controls src=\"{asset_url}\" style=\"width: 100%;\"></audio>\n\n"
             else:
-                markdown += f"[下载文件]({asset_url})\n\n"
+                markdown += f"[Download File]({asset_url})\n\n"
+        
+        markdown += "---\n\n"
     
     return markdown
 
@@ -138,13 +173,15 @@ def generate_leaderboard(user_data):
     leaderboard = []
     
     for username, data in user_data.items():
-        current_streak, longest_streak = calculate_streak(data['checkin_dates'])
-        leaderboard.append({
+        row = {
             'username': username,
             'total': data['total_checkins'],
-            'current_streak': current_streak,
-            'longest_streak': longest_streak
-        })
+        }
+        # Add stats for each known category
+        for cat in CATEGORIES:
+            row[cat] = data['categories'].get(cat, 0)
+            
+        leaderboard.append(row)
     
     leaderboard.sort(key=lambda x: x['total'], reverse=True)
     return leaderboard
@@ -159,52 +196,72 @@ def update_readme(leaderboard, latest_checkins):
     with open(README_PATH, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    leaderboard_table = "| 用户 | 总打卡次数 | 连续打卡 |\n|------|-----------|---------|\n"
-    for user in leaderboard[:10]:
-        leaderboard_table += f"| [{user['username']}](users/{user['username']}.md) | {user['total']} | {user['current_streak']} |\n"
+    # Generate new table header
+    # | User | AI | Frontend | English | Math | Reading | Total |
+    header = "| User | " + " | ".join(CATEGORIES) + " | Total |\n"
+    separator = "|---" * (len(CATEGORIES) + 2) + "|\n"
     
-    latest_section = "## 最新打卡\n\n"
+    leaderboard_table = header + separator
+    
+    for user in leaderboard[:10]:
+        row = f"| [{user['username']}](users/{user['username']}.md) | "
+        for cat in CATEGORIES:
+            row += f"{user.get(cat, 0)} | "
+        row += f"{user['total']} |\n"
+        leaderboard_table += row
+    
+    latest_section = "## Latest Check-ins\n\n"
     if latest_checkins:
         for checkin in latest_checkins[:5]:
             latest_section += f"### {checkin['date']}\n\n"
             for user in checkin['users']:
                 content = user.get('content_md', user.get('content', ''))
-                latest_section += f"- **{user['github']}**: {content[:100]}...\n"
+                cat = user.get('category', 'General')
+                latest_section += f"- **{user['github']}** ({cat}): {content[:100]}...\n"
             latest_section += "\n"
     else:
-        latest_section += "暂无打卡记录\n"
+        latest_section += "No recent check-ins\n"
     
-    content = content.split("## 排行榜")[0]
-    content += "## 排行榜\n\n" + leaderboard_table + "\n" + latest_section
-    
+    # Replace old sections
+    # We assume "## Leaderboard" is the anchor
+    if "## Leaderboard" in content:
+        pre_content = content.split("## Leaderboard")[0]
+        new_content = pre_content + "## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
+    elif "## 排行榜" in content:
+        pre_content = content.split("## 排行榜")[0]
+        new_content = pre_content + "## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
+    else:
+        # Fallback if neither exists
+        new_content = content + "\n\n## Leaderboard\n\n" + leaderboard_table + "\n" + latest_section
+
     with open(README_PATH, 'w', encoding='utf-8') as f:
-        f.write(content)
+        f.write(new_content)
     
     print("Updated README.md")
 
 
 def main():
-    print("开始同步统计数据...")
+    print("Syncing statistics...")
     
     checkins = load_checkins()
-    print(f"加载了 {len(checkins)} 个打卡记录")
+    print(f"Loaded {len(checkins)} check-in records")
     
     if not checkins:
-        print("没有找到打卡记录")
+        print("No check-ins found")
         return
     
     user_data = calculate_user_stats(checkins)
-    print(f"找到 {len(user_data)} 个用户")
+    print(f"Found {len(user_data)} users")
     
     update_user_files(user_data)
     
     leaderboard = generate_leaderboard(user_data)
-    print(f"生成了排行榜，共 {len(leaderboard)} 个用户")
+    print(f"Generated leaderboard with {len(leaderboard)} users")
     
     latest_checkins = sorted(checkins, key=lambda x: x['date'], reverse=True)
     update_readme(leaderboard, latest_checkins)
     
-    print("同步完成！")
+    print("Sync complete!")
 
 
 if __name__ == "__main__":

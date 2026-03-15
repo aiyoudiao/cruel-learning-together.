@@ -1,37 +1,65 @@
-# 学习打卡系统
+# GitHub Study Tracker V3 - Web3 Edition
 
-一个基于 GitHub 的学习打卡系统，允许用户通过 Web 界面提交每日学习打卡记录。
+A Cyberpunk/Solana-inspired study tracker built with React, Vite, TailwindCSS, and GitHub as a backend.
 
-## 项目结构
+## 🌟 Version 3 Features
 
-- **web/** - Web 应用程序（React + Vite + TypeScript）
-- **checkins/** - 存储每日打卡记录的 JSON 文件
-- **users/** - 存储用户个人资料的 Markdown 文件
-- **assets/images/** - 存储上传的图片资源
-- **scripts/** - Python 脚本，用于生成统计数据
-- **.github/workflows/** - GitHub Actions 工作流配置
+- **Web3 Cyberpunk UI**: Minimalist, neon-glowing design inspired by Solana.
+- **Theme System**: Toggle between Solana, Cyberpunk, Dark, and Light themes.
+- **Multi-Category**: Track learning in AI, Frontend, English, Math, and Reading.
+- **Rich Text Editor**: TipTap integration with Markdown support and media uploads.
+- **AI-Ready Architecture**: Structured for future AI-generated reports.
 
-## 功能特性
+## 🏗 System Architecture
 
-- 每日学习打卡
-- 图片上传支持
-- 自动统计和排行榜
-- 连续打卡记录
-- 用户个人页面
+```mermaid
+graph TD
+    User[User] -->|Check-in| App[Web App (React/Vite)]
+    App -->|Upload Assets| GitHubAssets[GitHub Assets]
+    App -->|Save Data| GitHubJSON[GitHub JSON Store]
+    GitHubJSON -->|Trigger| Action[GitHub Action]
+    Action -->|Run| SyncScript[Python Sync Script]
+    SyncScript -->|Update| README[Leaderboard]
+    SyncScript -->|Update| UserLogs[User Markdown Logs]
+    SyncScript -->|Generate| Reports[Future AI Reports]
+```
 
-## 使用方法
+## 🎨 Theme System
 
-1. 配置 GitHub Personal Access Token
-2. 启动 Web 应用
-3. 提交打卡记录
-4. 自动生成统计数据
+The system uses Tailwind CSS and CSS variables for theming.
+Themes are defined in `src/context/ThemeContext.tsx` and applied via `data-theme` attribute.
 
-## 排行榜
+- **Solana**: `#9945FF` (Purple) & `#14F195` (Green)
+- **Cyberpunk**: `#00F0FF` (Cyan) & `#FF003C` (Pink) & `#FTEE0E` (Yellow)
 
-| 用户 | 总打卡次数 | 连续打卡 |
-|------|-----------|---------|
-| - | - | - |
+## 📚 Category System
 
-## 最新打卡
+Data is stored hierarchically:
+`checkins/{category}/{date}.json`
 
-暂无打卡记录
+Supported categories:
+- AI
+- Frontend
+- English
+- Math
+- Reading
+
+## 🤖 Future AI Features
+
+The `reports/` directory is prepared for:
+- **Weekly Summaries**: AI analysis of weekly progress.
+- **Knowledge Graphs**: Connecting concepts learned across categories.
+- **Streak Predictions**: AI-driven motivation.
+
+## 🚀 Getting Started
+
+1.  Clone repository.
+2.  `cd web`
+3.  `npm install`
+4.  `npm run dev`
+
+## 🛠 Tech Stack
+
+- **Frontend**: React, Vite, TailwindCSS, TipTap
+- **Backend**: GitHub API, GitHub Actions
+- **Scripting**: Python

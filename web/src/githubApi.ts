@@ -10,8 +10,10 @@ export interface CheckinData {
   date: string;
   users: Array<{
     github: string;
-    content: string;
-    images: string[];
+    category: string;
+    content_md: string;
+    assets: string[];
+    tags: string[];
     timestamp: string;
   }>;
 }
@@ -29,31 +31,6 @@ export class GitHubAPI {
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
     };
-  }
-
-  async uploadImageToGithub(imageBase64: string, date: string): Promise<string> {
-    const randomId = Math.random().toString(36).substring(2, 15);
-    const fileName = `${date}-${randomId}.png`;
-    const path = `assets/images/${fileName}`;
-
-    const response = await fetch(
-      `${GITHUB_API_BASE}/repos/${this.config.owner}/${this.config.repo}/contents/${path}`,
-      {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          message: `Upload image ${fileName}`,
-          content: imageBase64,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to upload image: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.content.download_url;
   }
 
   async createOrUpdateFile(path: string, content: string, message: string): Promise<void> {
@@ -107,12 +84,15 @@ export class GitHubAPI {
 
   async submitCheckin(
     username: string,
+    category: string,
     content: string,
-    images: File[],
+    assets: string[],
+    tags: string[],
     date: string
   ): Promise<void> {
     const today = date || new Date().toISOString().split('T')[0];
-    const checkinPath = `checkins/${today}.json`;
+    // New path structure: checkins/{category}/YYYY-MM-DD.json
+    const checkinPath = `checkins/${category}/${today}.json`;
 
     const existingData = await this.getFile(checkinPath);
     let checkinData: CheckinData;
@@ -126,45 +106,36 @@ export class GitHubAPI {
       };
     }
 
-    const uploadedImages: string[] = [];
-    for (const image of images) {
-      const base64 = await this.fileToBase64(image);
-      const imageUrl = await this.uploadImageToGithub(base64, today);
-      uploadedImages.push(imageUrl);
-    }
-
-    const existingUserIndex = checkinData.users.findIndex(u => u.github === username);
-
     const userCheckin = {
       github: username,
-      content: content,
-      images: uploadedImages,
+      category: category,
+      content_md: content,
+      assets: assets,
+      tags: tags,
       timestamp: new Date().toISOString(),
     };
 
+    // Append or replace user's checkin for this category and date?
+    // Usually we allow multiple checkins or one per day. 
+    // The previous logic replaced the user's entry. 
+    // Let's stick to replacing for now, or appending if we want multiple checkins per day.
+    // Given the structure, `users` array implies multiple users checking in on the same day/category.
+    // So we should find if THIS user has already checked in.
+    
+    const existingUserIndex = checkinData.users.findIndex(u => u.github === username);
+
     if (existingUserIndex >= 0) {
+      // Update existing checkin
       checkinData.users[existingUserIndex] = userCheckin;
     } else {
+      // Add new checkin
       checkinData.users.push(userCheckin);
     }
 
     await this.createOrUpdateFile(
       checkinPath,
       JSON.stringify(checkinData, null, 2),
-      `Update checkin for ${username} on ${today}`
+      `Update checkin for ${username} in ${category} on ${today}`
     );
-  }
-
-  private fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   }
 }

@@ -1,111 +1,171 @@
+@import "tailwindcss";
+
+/* 1. Define CSS Variables for Themes */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Default (Solana) Theme */
+  --color-primary: #9945FF;
+  --color-secondary: #14F195;
+  --color-bg: #0B0B0F;
+  --color-surface: #1A1A1F;
+  --color-text: #ffffff;
+  --color-border: rgba(255, 255, 255, 0.1);
+  
+  --shadow-glow-primary: 0 0 10px #9945FF, 0 0 20px #9945FF;
+  --shadow-glow-secondary: 0 0 10px #14F195, 0 0 20px #14F195;
+}
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+[data-theme="cyberpunk"] {
+  --color-primary: #00F0FF;     /* Neon Cyan */
+  --color-secondary: #FF003C;   /* Neon Pink */
+  --color-bg: #050505;          /* Darker Black */
+  --color-surface: #121212;
+  --color-text: #FTEE0E;        /* Cyber Yellow Text */
+  --color-border: rgba(0, 240, 255, 0.3);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --shadow-glow-primary: 0 0 10px #00F0FF, 0 0 20px #00F0FF;
+  --shadow-glow-secondary: 0 0 10px #FF003C, 0 0 20px #FF003C;
+}
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+[data-theme="light"] {
+  --color-primary: #4F46E5;     /* Indigo */
+  --color-secondary: #10B981;   /* Emerald */
+  --color-bg: #F3F4F6;          /* Gray 100 */
+  --color-surface: #FFFFFF;
+  --color-text: #111827;        /* Gray 900 */
+  --color-border: #E5E7EB;
+
+  --shadow-glow-primary: 0 0 10px rgba(79, 70, 229, 0.3);
+  --shadow-glow-secondary: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] {
+  --color-primary: #3B82F6;     /* Blue */
+  --color-secondary: #8B5CF6;   /* Violet */
+  --color-bg: #111827;          /* Gray 900 */
+  --color-surface: #1F2937;     /* Gray 800 */
+  --color-text: #F9FAFB;        /* Gray 50 */
+  --color-border: #374151;
+
+  --shadow-glow-primary: 0 0 10px rgba(59, 130, 246, 0.5);
+  --shadow-glow-secondary: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+/* 2. Map CSS Variables to Tailwind Theme */
+@theme {
+  --color-solana-primary: var(--color-primary);
+  --color-solana-secondary: var(--color-secondary);
+  --color-solana-dark: var(--color-bg);
+  --color-solana-surface: var(--color-surface);
+  
+  /* Cyberpunk specific colors can remain static or be mapped if needed */
+  --color-cyberpunk-neon: #00F0FF;
+  --color-cyberpunk-pink: #FF003C;
+  --color-cyberpunk-yellow: #FTEE0E;
+
+  --shadow-neon-purple: var(--shadow-glow-primary);
+  --shadow-neon-green: var(--shadow-glow-secondary);
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+
+  @keyframes glow {
+    0% { box-shadow: 0 0 5px var(--color-primary); }
+    100% { box-shadow: 0 0 20px var(--color-primary), 0 0 10px var(--color-secondary); }
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
+/* Base styles */
 body {
-  margin: 0;
+  background-color: var(--color-solana-dark);
+  color: var(--color-text); /* Use dynamic text color */
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  transition: background-color 0.5s ease, color 0.5s ease; /* Smooth transition */
+  
+  /* Background pattern only for dark themes */
+  background-image: 
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-primary) 15%, transparent), transparent 50%),
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--color-secondary) 10%, transparent), transparent 50%);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* Hide background pattern for light theme if desired, or keep it subtle */
+[data-theme="light"] body {
+   background-image: none;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+::-webkit-scrollbar-track {
+  background-color: var(--color-solana-dark);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-solana-surface);
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-solana-primary);
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 200px;
+  color: var(--color-text); /* Dynamic text color */
+  opacity: 0.9;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h1, .ProseMirror h2 {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.ProseMirror h3 {
+  color: var(--color-solana-secondary);
+  font-weight: 700;
+}
+
+.ProseMirror blockquote {
+  border-left-width: 4px;
+  border-color: var(--color-solana-primary);
+  background-color: color-mix(in srgb, var(--color-solana-surface) 50%, transparent);
+  color: var(--color-text);
+  font-style: italic;
+}
+
+.ProseMirror code {
+  background-color: color-mix(in srgb, var(--color-solana-dark) 50%, transparent);
+  color: var(--color-solana-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.ProseMirror pre {
+  background-color: var(--color-solana-dark);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.ProseMirror a {
+  color: var(--color-solana-primary);
+}
+
+.ProseMirror a:hover {
+  color: var(--color-solana-secondary);
+}
+
+.ProseMirror img, .ProseMirror video {
+  border: 1px solid var(--color-border);
 }
